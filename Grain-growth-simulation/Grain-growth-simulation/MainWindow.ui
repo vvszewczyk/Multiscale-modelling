@@ -22,7 +22,7 @@
  <layoutDefault spacing="6" margin="11" />
  <pixmapfunction></pixmapfunction>
  <resources>
-   <include location="Resources.qrc"/>
+   <include location="MainWindow.qrc"/>
  </resources>
  <connections/>
 </UI>

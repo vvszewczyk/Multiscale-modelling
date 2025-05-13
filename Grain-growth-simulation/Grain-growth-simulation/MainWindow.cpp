@@ -1,12 +1,9 @@
 ﻿#include "MainWindow.h"
-#include "GridWidget.h"
-#include <QGuiApplication>
-#include <QHBoxLayout>
-#include <QScreen>
+#include "Constants.h"
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
-    setFixedSize(1000, 800);
+    setFixedSize(Config::windowWidth, Config::windowHeight);
     setupUI();
     setupLayout();
     setupConnections();
@@ -21,8 +18,8 @@ void MainWindow::setupUI()
 
     startButton = new QPushButton("Start", this);
     resetButton = new QPushButton("Reset", this);
-    startButton->setFixedSize(50, 20);
-    resetButton->setFixedSize(50, 20);
+    startButton->setFixedSize(Config::buttonWidth, Config::buttonHeight);
+    resetButton->setFixedSize(Config::buttonWidth, Config::buttonHeight);
 
     gridToggle = new QCheckBox("Show grid", this);
     gridToggle->setChecked(true);
@@ -30,24 +27,21 @@ void MainWindow::setupUI()
 
 void MainWindow::setupLayout()
 {
-    QWidget *cw = this->centralWidget();
-    cw->setStyleSheet("background-color: #f0f0f0;");
+    QWidget *centralWidget = this->centralWidget();
+    centralWidget->setStyleSheet(Config::centralWidgetColor); // lightgreen
 
-    auto *mainLayout = new QHBoxLayout(cw);
+    QHBoxLayout *mainLayout = new QHBoxLayout(centralWidget);
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
 
     // Left panel (grid)
-    QWidget *leftBlock = new QWidget(cw);
-    leftBlock->setStyleSheet("background-color: #ffe4e1;"); // lightpink
-    auto *leftLayout = new QVBoxLayout(leftBlock);
-    leftLayout->setContentsMargins(5, 5, 5, 5);
+    QWidget *leftBlock = new QWidget(centralWidget);
+    leftBlock->setStyleSheet(Config::leftBlockColor); // lightpink
+    QVBoxLayout *leftLayout = new QVBoxLayout(leftBlock);
+    leftLayout->setContentsMargins(Config::margin, Config::margin, Config::margin, Config::margin);
     leftLayout->setSpacing(0);
-
-    constexpr int gridW = 860;
-    constexpr int gridH = 790;
     grid->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    grid->setFixedSize(gridW, gridH);
+    grid->setFixedSize(Config::gridWidth, Config::gridHeight);
 
     // Grid position: left corner
     leftLayout->addWidget(grid, /*stretch=*/0, Qt::AlignTop | Qt::AlignLeft);
@@ -55,8 +49,8 @@ void MainWindow::setupLayout()
     mainLayout->addWidget(leftBlock, /*stretch=*/7);
 
     // Right panel (buttons and checkbox)
-    QWidget *rightBlock = new QWidget(cw);
-    rightBlock->setStyleSheet("background-color: #e1eaff;"); // lightblue
+    QWidget *rightBlock = new QWidget(centralWidget);
+    rightBlock->setStyleSheet(Config::rightBlockColor); // lightblue
     auto *rightLayout = new QVBoxLayout(rightBlock);
     rightLayout->setContentsMargins(5, 5, 5, 5);
     rightLayout->setSpacing(10);
@@ -79,7 +73,7 @@ void MainWindow::setupLayout()
 void MainWindow::setupConnections()
 {
     connect(this->startButton, &QPushButton::clicked, this, &MainWindow::onStartSimulation);
-    connect(this->exitButton, &QPushButton::clicked, this, &MainWindow::close);
+    connect(this->resetButton, &QPushButton::clicked, this, &MainWindow::onResetSimulation);
     connect(this->gridToggle, &QCheckBox::stateChanged, this,
             [this](int state) { grid->setShowGrid(state == Qt::Checked); });
 }
@@ -87,6 +81,11 @@ void MainWindow::setupConnections()
 void MainWindow::onStartSimulation()
 {
     QMessageBox::information(this, "Info", "Simulation has started.");
+}
+
+void MainWindow::onResetSimulation()
+{
+    QMessageBox::information(this, "Info", "Simulation has restarted.");
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *event)

@@ -18,6 +18,7 @@ class MainWindow : public QMainWindow
     ~MainWindow();
 
     void onStartSimulation();
+    void onResetSimulation();
     void keyPressEvent(QKeyEvent *event);
 
   private:
@@ -28,6 +29,5 @@ class MainWindow : public QMainWindow
     GridWidget *grid = nullptr;
     QPushButton *startButton = nullptr;
     QPushButton *resetButton = nullptr;
-    QPushButton *exitButton = nullptr;
     QCheckBox *gridToggle = nullptr;
 };
