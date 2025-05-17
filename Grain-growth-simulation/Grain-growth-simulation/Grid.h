@@ -6,10 +6,13 @@ class Grid
 {
     int cols, rows;
     std::vector<Cell> cells;
+    inline int wrap(int x, int max) const;
 
   public:
     Grid(int cols, int rows);
+    int getCols() const;
+    int getRows() const;
     Cell &at(int x, int y);
-    int width() const;
-    int height() const;
+    const Cell &at(int x, int y) const;
+    void reset();
 };
