@@ -11,9 +11,9 @@ const int gridHeight = gridRows * cellSize;
 
 // Main window
 const int windowWidth = 1000;
-const int windowHeight = 800;
+const int windowHeight = 808;
 
-// Button
+// Buttons
 const int buttonWidth = 50;
 const int buttonHeight = 20;
 
