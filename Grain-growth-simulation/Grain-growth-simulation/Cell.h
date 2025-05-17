@@ -3,17 +3,21 @@
 
 enum class State
 {
-    Dead,
-    Allive
+    Empty,
+    Occupied
 };
 
 class Cell
 {
-    State state;
+    State grainState;
+    int grainID;
+    QColor color;
 
   public:
-    Cell(State s = State::Dead);
-    State state() const;
-    void setState(State);
+    Cell(State s = State::Empty, int id = 0);
+    State getState() const;
+    int getGrainID() const;
     QColor colorForState() const;
+    void setState(State s, int ID, const QColor &col);
+    void reset();
 };
