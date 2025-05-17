@@ -1,7 +1,11 @@
 ﻿#include "MainWindow.h"
 #include "Constants.h"
 
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent), gridWidget(new GridWidget(this)), sim(new Simulation(Config::gridCols, Config::gridRows)),
+      timer(new QTimer(this)), startButton(new QPushButton("Start", this)), resetButton(new QPushButton("Reset", this)),
+      gridToggle(new QCheckBox("Show grid", this)), ereaseToggle(new QCheckBox("Erease mode", this)),
+      iterationLabel(new QLabel("Iteration: 0", this))
 {
     setFixedSize(Config::windowWidth, Config::windowHeight);
     setupUI();
@@ -11,89 +15,95 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
 void MainWindow::setupUI()
 {
-    QWidget *centralWidget = new QWidget(this);
-    this->setCentralWidget(centralWidget);
-
-    this->grid = new GridWidget(this);
-
-    startButton = new QPushButton("Start", this);
-    resetButton = new QPushButton("Reset", this);
-    startButton->setFixedSize(Config::buttonWidth, Config::buttonHeight);
-    resetButton->setFixedSize(Config::buttonWidth, Config::buttonHeight);
-
-    gridToggle = new QCheckBox("Show grid", this);
-    gridToggle->setChecked(true);
+    this->gridWidget->setFixedSize(Config::gridWidth, Config::gridHeight);
+    this->gridWidget->setSimulation(sim);
+    this->gridToggle->setChecked(true);
+    this->ereaseToggle->setChecked(false);
 }
 
 void MainWindow::setupLayout()
 {
-    QWidget *centralWidget = this->centralWidget();
-    centralWidget->setStyleSheet(Config::centralWidgetColor); // lightgreen
+    QWidget *centralWidget = new QWidget(this);
+    setCentralWidget(centralWidget);
+    // centralWidget->setStyleSheet(Config::centralWidgetColor); // lightgreen
 
     QHBoxLayout *mainLayout = new QHBoxLayout(centralWidget);
     mainLayout->setContentsMargins(0, 0, 0, 0);
-    mainLayout->setSpacing(0);
 
-    // Left panel (grid)
-    QWidget *leftBlock = new QWidget(centralWidget);
-    leftBlock->setStyleSheet(Config::leftBlockColor); // lightpink
-    QVBoxLayout *leftLayout = new QVBoxLayout(leftBlock);
-    leftLayout->setContentsMargins(Config::margin, Config::margin, Config::margin, Config::margin);
-    leftLayout->setSpacing(0);
-    grid->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    grid->setFixedSize(Config::gridWidth, Config::gridHeight);
+    QWidget *left = new QWidget(centralWidget);
+    // left->setStyleSheet(Config::leftBlockColor);
+    QVBoxLayout *leftLayout = new QVBoxLayout(left);
+    leftLayout->addWidget(gridWidget, 0, Qt::AlignTop | Qt::AlignLeft);
+    leftLayout->addStretch();
+    mainLayout->addWidget(left, 7);
 
-    // Grid position: left corner
-    leftLayout->addWidget(grid, /*stretch=*/0, Qt::AlignTop | Qt::AlignLeft);
+    QWidget *right = new QWidget(centralWidget);
+    // right->setStyleSheet(Config::rightBlockColor);
+    QVBoxLayout *rightLayout = new QVBoxLayout(right);
 
-    mainLayout->addWidget(leftBlock, /*stretch=*/7);
-
-    // Right panel (buttons and checkbox)
-    QWidget *rightBlock = new QWidget(centralWidget);
-    rightBlock->setStyleSheet(Config::rightBlockColor); // lightblue
-    auto *rightLayout = new QVBoxLayout(rightBlock);
-    rightLayout->setContentsMargins(5, 5, 5, 5);
-    rightLayout->setSpacing(10);
-
-    // Start/Reset
-    auto *btnRow = new QHBoxLayout;
+    // Start/pause and reset buttons
+    QHBoxLayout *btnRow = new QHBoxLayout;
     btnRow->addStretch();
     btnRow->addWidget(startButton);
-    btnRow->addSpacing(10);
+    btnRow->addSpacing(10); // Space between buttons
     btnRow->addWidget(resetButton);
     btnRow->addStretch();
     rightLayout->addLayout(btnRow);
 
-    // checkbox
-    rightLayout->addWidget(gridToggle, /*stretch=*/0, Qt::AlignHCenter);
-    rightLayout->addStretch();
-    mainLayout->addWidget(rightBlock, /*stretch=*/1);
+    // Checkboxes
+    rightLayout->addWidget(gridToggle, 0, Qt::AlignHCenter);
+    rightLayout->addWidget(ereaseToggle, 0, Qt::AlignCenter);
+    rightLayout->addStretch(); // Push checkboxes up
+
+    // Iterations label
+    rightLayout->addWidget(iterationLabel, 0, Qt::AlignRight);
+
+    // Add right panel to main layout
+    mainLayout->addWidget(right, 1);
 }
 
 void MainWindow::setupConnections()
 {
-    connect(this->startButton, &QPushButton::clicked, this, &MainWindow::onStartSimulation);
-    connect(this->resetButton, &QPushButton::clicked, this, &MainWindow::onResetSimulation);
-    connect(this->gridToggle, &QCheckBox::stateChanged, this,
-            [this](int state) { grid->setShowGrid(state == Qt::Checked); });
+    connect(startButton, &QPushButton::clicked, this, &MainWindow::onStartClicked);          // Start button event
+    connect(resetButton, &QPushButton::clicked, this, &MainWindow::onResetClicked);          // Reset button event
+    connect(gridToggle, &QCheckBox::stateChanged, gridWidget, &GridWidget::setShowGrid);     // Grid toggle
+    connect(ereaseToggle, &QCheckBox::stateChanged, gridWidget, &GridWidget::setEreaseMode); // Erease mode toggle
+    connect(timer, &QTimer::timeout, this, &MainWindow::onStep); // Start the whole simulation
 }
 
-void MainWindow::onStartSimulation()
+void MainWindow::onStartClicked()
 {
-    QMessageBox::information(this, "Info", "Simulation has started.");
-}
-
-void MainWindow::onResetSimulation()
-{
-    QMessageBox::information(this, "Info", "Simulation has restarted.");
-}
-
-void MainWindow::keyPressEvent(QKeyEvent *event)
-{
-    if (event->key() == Qt::Key_Escape)
+    if (timer->isActive())
     {
-        close();
+        timer->stop();
+        startButton->setText("Start");
     }
+    else
+    {
+        timer->start(100);
+        startButton->setText("Pause");
+    }
+}
+
+void MainWindow::onResetClicked()
+{
+    timer->stop();
+    startButton->setText("Start");
+    sim->reset();
+    gridWidget->update();
+    updateIterationLabel();
+}
+
+void MainWindow::onStep()
+{
+    sim->step();
+    gridWidget->update();
+    updateIterationLabel();
+}
+
+void MainWindow::updateIterationLabel()
+{
+    iterationLabel->setText(QString("Iteration: %0").arg(sim->getIteration()));
 }
 
 MainWindow::~MainWindow()
