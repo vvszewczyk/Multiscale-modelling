@@ -6,16 +6,20 @@ namespace Config
 const int cellSize = 5; // 1, 2, 5, 10
 const int gridCols = std::ceil(860 / double(Config::cellSize));
 const int gridRows = std::ceil(790 / double(Config::cellSize));
+const int gridDepth = 50;
 const int gridWidth = gridCols * cellSize;
 const int gridHeight = gridRows * cellSize;
 
 // Main window
-const int windowWidth = 1000;
+const int windowWidth = 1065;
 const int windowHeight = 808;
 
 // Buttons
 const int buttonWidth = 50;
 const int buttonHeight = 20;
+
+// Simulation
+const int grainNumber = 500;
 
 // Panel colors
 const char centralWidgetColor[] = "background-color: #74f740"; // lightgreen
