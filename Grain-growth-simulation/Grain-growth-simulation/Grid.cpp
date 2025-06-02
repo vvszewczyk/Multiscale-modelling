@@ -1,9 +1,9 @@
 #include "Grid.h"
 #include "Cell.h"
 
-Grid::Grid(int c, int r) : cols(c), rows(r), cells(c * r) {};
+Grid::Grid(int c, int r, int d) : cols(c), rows(r), depth(d), cells(c * r * d) {};
 
-int Grid::wrap(int x, int max) const
+inline int Grid::BC(int x, int max) const
 {
     if (x < 0)
     {
@@ -16,18 +16,20 @@ int Grid::wrap(int x, int max) const
     return x;
 }
 
-Cell &Grid::at(int x, int y)
+Cell &Grid::at(int x, int y, int z)
 {
-    x = wrap(x, cols);
-    y = wrap(y, rows);
-    return cells[y * cols + x];
+    x = BC(x, cols);
+    y = BC(y, rows);
+    z = BC(z, depth);
+    return cells[(z * rows + y) * cols + x];
 }
 
-const Cell &Grid::at(int x, int y) const
+const Cell &Grid::at(int x, int y, int z) const
 {
-    x = wrap(x, cols);
-    y = wrap(y, rows);
-    return cells[y * cols + x];
+    x = BC(x, cols);
+    y = BC(y, rows);
+    z = BC(z, depth);
+    return cells[(z * rows + y) * cols + x];
 }
 
 int Grid::getCols() const
@@ -38,6 +40,11 @@ int Grid::getCols() const
 int Grid::getRows() const
 {
     return this->rows;
+}
+
+int Grid::getDepth() const
+{
+    return this->depth;
 }
 
 void Grid::reset()

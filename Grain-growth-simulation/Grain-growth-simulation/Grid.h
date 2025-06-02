@@ -4,15 +4,17 @@
 
 class Grid
 {
-    int cols, rows;
+    int cols, rows, depth;
     std::vector<Cell> cells;
-    inline int wrap(int x, int max) const;
+    inline int BC(int x, int max) const;
 
   public:
-    Grid(int cols, int rows);
+    Grid(int cols, int rows, int depth);
+    Cell &at(int x, int y, int z);
+    const Cell &at(int x, int y, int z) const;
+
     int getCols() const;
     int getRows() const;
-    Cell &at(int x, int y);
-    const Cell &at(int x, int y) const;
+    int getDepth() const;
     void reset();
 };
