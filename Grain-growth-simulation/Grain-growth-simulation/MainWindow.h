@@ -1,12 +1,14 @@
 #pragma once
 #include <GridWidget.h>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QSlider>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QtWidgets/QMainWindow>
@@ -23,6 +25,14 @@ class MainWindow : public QMainWindow
     QCheckBox *ereaseToggle;
     QLabel *iterationLabel;
 
+    QLabel *layerLabel;
+    QSlider *layerSlider;
+
+    QPushButton *placeGrains;
+
+    QLabel *neighbourhoodLabel;
+    QComboBox *neighbourhood;
+
     void setupUI();
     void setupLayout();
     void setupConnections();
@@ -32,8 +42,11 @@ class MainWindow : public QMainWindow
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-  private:
+  private slots:
     void onStartClicked();
     void onResetClicked();
     void onStep();
+    void onLayerChanged(int newZ);
+    void onPlaceGrainsClicked();
+    void onNeighbourhoodChanged(int index);
 };
