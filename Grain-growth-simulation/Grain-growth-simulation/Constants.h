@@ -19,7 +19,8 @@ const int buttonWidth = 50;
 const int buttonHeight = 20;
 
 // Simulation
-const int grainNumber = 500;
+const int randomGrainNumber = 500;
+const int regularGrainStride = 10;
 
 // Panel colors
 const char centralWidgetColor[] = "background-color: #74f740"; // lightgreen
