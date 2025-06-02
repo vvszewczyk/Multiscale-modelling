@@ -10,12 +10,14 @@ class GridWidget : public QWidget
     Simulation *sim;
     bool showGrid;
     bool ereaseMode;
+    int currentZ;
 
   public:
     explicit GridWidget(QWidget *parent = nullptr);
     void setSimulation(Simulation *s);
     void setShowGrid(bool value);
     void setEreaseMode(bool value);
+    void setLayer(int z);
 
   protected:
     void paintEvent(QPaintEvent *event) override;

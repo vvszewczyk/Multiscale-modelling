@@ -2,7 +2,7 @@
 #include "Constants.h"
 #include <QPainter>
 
-GridWidget::GridWidget(QWidget *parent) : QWidget(parent), showGrid(true), sim(nullptr) {};
+GridWidget::GridWidget(QWidget *parent) : QWidget(parent), showGrid(true), sim(nullptr), currentZ(0) {};
 
 void GridWidget::setSimulation(Simulation *s)
 {
@@ -20,6 +20,29 @@ void GridWidget::setEreaseMode(bool value)
     ereaseMode = value;
 }
 
+void GridWidget::setLayer(int z)
+{
+    if (!sim)
+    {
+        return;
+    }
+
+    int maxZ = sim->getGrid().getDepth() - 1;
+
+    if (z < 0)
+    {
+        z = 0;
+    }
+
+    if (z > maxZ)
+    {
+        z = maxZ;
+    }
+
+    currentZ = z;
+    update();
+}
+
 void GridWidget::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
@@ -33,7 +56,7 @@ void GridWidget::paintEvent(QPaintEvent *)
             for (int y = 0; y < grid.getRows(); ++y)
             {
                 painter.fillRect(x * Config::cellSize, y * Config::cellSize, Config::cellSize, Config::cellSize,
-                                 grid.at(x, y).colorForState());
+                                 grid.at(x, y, currentZ).colorForState());
             }
         }
     }
@@ -71,14 +94,15 @@ void GridWidget::mousePressEvent(QMouseEvent *event)
 
     int x = p.x() / Config::cellSize;
     int y = p.y() / Config::cellSize;
+    int z = currentZ;
 
     if (!ereaseMode)
     {
-        sim->seedManual(x, y);
+        sim->seedManual(x, y, z);
     }
     else
     {
-        sim->removeAt(x, y);
+        sim->removeAt(x, y, z);
     }
 
     update();
