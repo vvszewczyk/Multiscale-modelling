@@ -4,7 +4,8 @@
 enum class NeighbourhoodType
 {
     VonNeumann,
-    Moore
+    Moore,
+    HexagonalRandom
 };
 
 class Simulation
@@ -22,8 +23,10 @@ class Simulation
     void step();
     void reset();
 
-    void seedRandom(int N);
     void seedManual(int x, int y, int z);
+    void seedRandom(int N);
+    void seedRegular(int stepX, int stepY, int stepZ);
+
     void removeAt(int x, int y, int z);
 
     const Grid &getGrid() const;

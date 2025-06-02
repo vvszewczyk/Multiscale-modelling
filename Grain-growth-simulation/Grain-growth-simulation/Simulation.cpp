@@ -14,6 +14,12 @@ static const QVector3D MOORE[26] = {
     QVector3D(1, 0, -1),   QVector3D(1, 0, 0),   QVector3D(1, 0, 1),   QVector3D(1, 1, -1),  QVector3D(1, 1, 0),
     QVector3D(1, 1, 1)};
 
+static const QVector3D HEXAGON_A[6] = {QVector3D(-1, -1, 0), QVector3D(0, -1, 0), QVector3D(1, 0, 0),
+                                       QVector3D(0, 1, 0),   QVector3D(-1, 0, 0), QVector3D(1, 1, 0)};
+
+static const QVector3D HEXAGON_B[6] = {QVector3D(0, -1, 0), QVector3D(1, -1, 0), QVector3D(1, 0, 0),
+                                       QVector3D(0, 1, 0),  QVector3D(-1, 0, 0), QVector3D(-1, 1, 0)};
+
 Simulation::Simulation(int cols, int rows, int depth)
     : currentGrid(cols, rows, depth), nextGrid(cols, rows, depth), nextGrainID(1), iteration(0),
       neighbourhoodType(NeighbourhoodType::VonNeumann) {};
@@ -57,11 +63,11 @@ QColor Simulation::randomColor() const
 
 void Simulation::seedManual(int x, int y, int z)
 {
-    Cell &c = currentGrid.at(x, y, z);
+    Cell &clicked = currentGrid.at(x, y, z);
 
-    if (c.getState() == State::Empty)
+    if (clicked.getState() == State::Empty)
     {
-        c.setState(State::Occupied, nextGrainID++, randomColor());
+        clicked.setState(State::Occupied, nextGrainID++, randomColor());
     }
 }
 
@@ -80,24 +86,46 @@ void Simulation::seedRandom(int count)
     }
 }
 
+void Simulation::seedRegular(int stepX, int stepY, int stepZ)
+{
+    int w = currentGrid.getCols();
+    int h = currentGrid.getRows();
+    int d = currentGrid.getDepth();
+
+    for (int z = 0; z < d; z += stepZ)
+    {
+        for (int y = 0; y < h; y += stepY)
+        {
+            for (int x = 0; x < w; x += stepX)
+            {
+                Cell &c = currentGrid.at(x, y, z);
+                if (c.getState() == State::Empty)
+                {
+                    c.setState(State::Occupied, nextGrainID++, randomColor());
+                }
+            }
+        }
+    }
+}
+
 void Simulation::removeAt(int x, int y, int z)
 {
     Cell &clicked = currentGrid.at(x, y, z);
-    if (clicked.getState() != State::Occupied)
+    if (clicked.getState() == State::Empty)
     {
         return;
     }
 
     int targetID = clicked.getGrainID();
-    int W = currentGrid.getCols();
-    int H = currentGrid.getRows();
-    int D = currentGrid.getDepth();
+    int w = currentGrid.getCols();
+    int h = currentGrid.getRows();
+    int d = currentGrid.getDepth();
 
-    for (int i = 0; i < W; ++i)
+    for (int i = 0; i < w; ++i)
     {
-        for (int j = 0; j < H; ++j)
+        for (int j = 0; j < h; ++j)
         {
-            for (int k = 0; k < D; ++k)
+            for (int k = 0; k < d; ++k)
             {
                 Cell &c = currentGrid.at(i, j, k);
                 if (c.getState() == State::Occupied && c.getGrainID() == targetID)
@@ -126,10 +154,14 @@ void Simulation::step()
         offsets = VN;
         offsetCount = 6;
     }
-    else
+    else if (neighbourhoodType == NeighbourhoodType::Moore)
     {
         offsets = MOORE;
         offsetCount = 26;
+    }
+    else if (neighbourhoodType == NeighbourhoodType::HexagonalRandom)
+    {
+        offsetCount = 6 + 2;
     }
 
     for (int x = 0; x < W; ++x)
@@ -148,16 +180,48 @@ void Simulation::step()
                     std::vector<Cell *> neighbours;
                     neighbours.reserve(offsetCount);
 
-                    for (int i = 0; i < offsetCount; ++i)
+                    if (neighbourhoodType == NeighbourhoodType::VonNeumann ||
+                        neighbourhoodType == NeighbourhoodType::Moore)
                     {
-                        int nx = x + offsets[i].x();
-                        int ny = y + offsets[i].y();
-                        int nz = z + offsets[i].z();
-                        Cell &nc = currentGrid.at(nx, ny, nz);
-
-                        if (nc.getState() == State::Occupied)
+                        for (int i = 0; i < offsetCount; ++i)
                         {
-                            neighbours.push_back(&nc);
+                            int nx = x + offsets[i].x();
+                            int ny = y + offsets[i].y();
+                            int nz = z + offsets[i].z();
+                            Cell &nc = currentGrid.at(nx, ny, nz);
+
+                            if (nc.getState() == State::Occupied)
+                            {
+                                neighbours.push_back(&nc);
+                            }
+                        }
+                    }
+                    else if (neighbourhoodType == NeighbourhoodType::HexagonalRandom)
+                    {
+                        int whichHex = QRandomGenerator::global()->bounded(2); // 0/1 in XY
+                        offsets = (whichHex == 0 ? HEXAGON_A : HEXAGON_B);
+                        for (int i = 0; i < offsetCount - 2; ++i)
+                        {
+                            int nx = x + offsets[i].x();
+                            int ny = y + offsets[i].y();
+                            int nz = z + offsets[i].z();
+                            Cell &nc = currentGrid.at(nx, ny, nz);
+
+                            if (nc.getState() == State::Occupied)
+                            {
+                                neighbours.push_back(&nc);
+                            }
+
+                            Cell &up = currentGrid.at(x, y, z + 1);
+                            if (up.getState() == State::Occupied)
+                            {
+                                neighbours.push_back(&up);
+                            }
+                            Cell &dn = currentGrid.at(x, y, z - 1);
+                            if (dn.getState() == State::Occupied)
+                            {
+                                neighbours.push_back(&dn);
+                            }
                         }
                     }
 
