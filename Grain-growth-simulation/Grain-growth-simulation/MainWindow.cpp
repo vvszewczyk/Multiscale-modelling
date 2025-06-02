@@ -4,11 +4,13 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), gridWidget(new GridWidget(this)),
       sim(new Simulation(Config::gridCols, Config::gridRows, Config::gridDepth)), timer(new QTimer(this)),
-      startButton(new QPushButton("Start", this)), resetButton(new QPushButton("Reset", this)),
-      gridToggle(new QCheckBox("Show grid", this)), ereaseToggle(new QCheckBox("Erease mode", this)),
-      iterationLabel(new QLabel("Iteration: 0", this)), layerSlider(new QSlider(Qt::Horizontal, this)),
-      layerLabel(new QLabel("Layer: 0", this)), placeGrains(new QPushButton("Place grains", this)),
-      neighbourhood(new QComboBox(this))
+      simulationLabel(new QLabel("Simulation", this)), startButton(new QPushButton("Start", this)),
+      resetButton(new QPushButton("Reset", this)), gridToggle(new QCheckBox("Show grid", this)),
+      ereaseToggle(new QCheckBox("Erease mode", this)), iterationLabel(new QLabel("Iteration: 0", this)),
+      layerSlider(new QSlider(Qt::Horizontal, this)), layerLabel(new QLabel("Layer: 0", this)),
+      grainsLabel(new QLabel("Place grains", this)), randomGrainsButton(new QPushButton("Random", this)),
+      regularGrainsButton(new QPushButton("Regular", this)), neighbourhood(new QComboBox(this)),
+      neighbourhoodLabel(new QLabel("Neighbourhood", this))
 {
     setFixedSize(Config::windowWidth, Config::windowHeight);
     setupUI();
@@ -24,7 +26,8 @@ void MainWindow::setupUI()
     this->gridToggle->setChecked(true);
     this->ereaseToggle->setChecked(false);
 
-    this->sim->seedRandom(Config::grainNumber);
+    // this->sim->seedRandom(Config::randomGrainNumber);
+    // this->sim->seedRegular(Config::regularGrainStride, Config::regularGrainStride, Config::regularGrainStride);
 
     this->layerSlider->setMinimum(0);
     this->layerSlider->setMaximum(Config::gridDepth - 1);
@@ -32,6 +35,7 @@ void MainWindow::setupUI()
 
     neighbourhood->addItem("Von Neumann");
     neighbourhood->addItem("Moore");
+    neighbourhood->addItem("Hexagonal Random");
     neighbourhood->setCurrentIndex(0);
 }
 
@@ -55,6 +59,8 @@ void MainWindow::setupLayout()
     // right->setStyleSheet(Config::rightBlockColor);
     QVBoxLayout *rightLayout = new QVBoxLayout(right);
 
+    rightLayout->addWidget(simulationLabel);
+
     // Start/pause and reset buttons
     QHBoxLayout *btnRow = new QHBoxLayout();
     btnRow->addStretch();
@@ -64,8 +70,17 @@ void MainWindow::setupLayout()
     btnRow->addStretch();
     rightLayout->addLayout(btnRow);
 
-    rightLayout->addWidget(placeGrains);
+    // Random/regular grain place buttons
+    rightLayout->addWidget(grainsLabel);
+    QHBoxLayout *grnPlcRow = new QHBoxLayout();
+    grnPlcRow->addStretch();
+    grnPlcRow->addWidget(randomGrainsButton);
+    grnPlcRow->addSpacing(10); // Space between buttons
+    grnPlcRow->addWidget(regularGrainsButton);
+    grnPlcRow->addStretch();
+    rightLayout->addLayout(grnPlcRow);
 
+    // Neighbourhood combobox
     rightLayout->addWidget(neighbourhoodLabel);
     rightLayout->addWidget(neighbourhood);
 
@@ -95,10 +110,13 @@ void MainWindow::setupConnections()
     connect(resetButton, &QPushButton::clicked, this, &MainWindow::onResetClicked);          // Reset button event
     connect(gridToggle, &QCheckBox::stateChanged, gridWidget, &GridWidget::setShowGrid);     // Grid toggle
     connect(ereaseToggle, &QCheckBox::stateChanged, gridWidget, &GridWidget::setEreaseMode); // Erease mode toggle
-    connect(timer, &QTimer::timeout, this, &MainWindow::onStep);                          // Start the whole simulation
-    connect(layerSlider, &QSlider::valueChanged, this, &MainWindow::onLayerChanged);      // Layer slider
-    connect(placeGrains, &QPushButton::clicked, this, &MainWindow::onPlaceGrainsClicked); // Place grains randolmy
-    connect(neighbourhood, QOverload<int>::of(&QComboBox::currentIndexChanged), this,     // Neighbourhood combobox
+    connect(timer, &QTimer::timeout, this, &MainWindow::onStep);                     // Start the whole simulation
+    connect(layerSlider, &QSlider::valueChanged, this, &MainWindow::onLayerChanged); // Layer slider
+    connect(randomGrainsButton, &QPushButton::clicked, this,
+            &MainWindow::onRandomGrainsClicked); // Place grains randolmy
+    connect(regularGrainsButton, &QPushButton::clicked, this,
+            &MainWindow::onRegularGrainsClicked);                                     // Place grains regularly
+    connect(neighbourhood, QOverload<int>::of(&QComboBox::currentIndexChanged), this, // Neighbourhood combobox
             &MainWindow::onNeighbourhoodChanged);
 }
 
@@ -121,8 +139,6 @@ void MainWindow::onResetClicked()
     timer->stop();
     startButton->setText("Start");
     sim->reset();
-
-    // sim->seedRandom(500);
 
     gridWidget->setLayer(0);
     gridWidget->update();
@@ -147,16 +163,36 @@ void MainWindow::onLayerChanged(int newZ)
     gridWidget->setLayer(newZ);
 }
 
-void MainWindow::onPlaceGrainsClicked()
+void MainWindow::onRandomGrainsClicked()
 {
     sim->reset();
-    sim->seedRandom(Config::grainNumber);
+    sim->seedRandom(Config::randomGrainNumber);
+    gridWidget->update();
+}
+
+void MainWindow::onRegularGrainsClicked()
+{
+    sim->reset();
+    sim->seedRegular(Config::regularGrainStride, Config::regularGrainStride, Config::regularGrainStride);
     gridWidget->update();
 }
 
 void MainWindow::onNeighbourhoodChanged(int index)
 {
-    NeighbourhoodType nt = (index == 0 ? NeighbourhoodType::VonNeumann : NeighbourhoodType::Moore);
+    NeighbourhoodType nt = NeighbourhoodType::VonNeumann;
+
+    if (index == 0)
+    {
+        nt = NeighbourhoodType::VonNeumann;
+    }
+    else if (index == 1)
+    {
+        nt = NeighbourhoodType::Moore;
+    }
+    else if (index == 2)
+    {
+        nt = NeighbourhoodType::HexagonalRandom;
+    }
     sim->setNeighbourhoodType(nt);
 }
 

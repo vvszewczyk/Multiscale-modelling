@@ -19,6 +19,7 @@ class MainWindow : public QMainWindow
     GridWidget *gridWidget;
     Simulation *sim;
     QTimer *timer;
+    QLabel *simulationLabel;
     QPushButton *startButton;
     QPushButton *resetButton;
     QCheckBox *gridToggle;
@@ -28,7 +29,9 @@ class MainWindow : public QMainWindow
     QLabel *layerLabel;
     QSlider *layerSlider;
 
-    QPushButton *placeGrains;
+    QLabel *grainsLabel;
+    QPushButton *randomGrainsButton;
+    QPushButton *regularGrainsButton;
 
     QLabel *neighbourhoodLabel;
     QComboBox *neighbourhood;
@@ -47,6 +50,7 @@ class MainWindow : public QMainWindow
     void onResetClicked();
     void onStep();
     void onLayerChanged(int newZ);
-    void onPlaceGrainsClicked();
+    void onRandomGrainsClicked();
+    void onRegularGrainsClicked();
     void onNeighbourhoodChanged(int index);
 };
