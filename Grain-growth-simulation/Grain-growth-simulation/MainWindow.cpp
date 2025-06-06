@@ -9,8 +9,9 @@ MainWindow::MainWindow(QWidget *parent)
       ereaseToggle(new QCheckBox("Erease mode", this)), iterationLabel(new QLabel("Iteration: 0", this)),
       layerSlider(new QSlider(Qt::Horizontal, this)), layerLabel(new QLabel("Layer: 0", this)),
       grainsLabel(new QLabel("Place grains", this)), randomGrainsButton(new QPushButton("Random", this)),
-      regularGrainsButton(new QPushButton("Regular", this)), neighbourhood(new QComboBox(this)),
-      neighbourhoodLabel(new QLabel("Neighbourhood", this))
+      regularGrainsButton(new QPushButton("Regular", this)), neighbourhoodCombo(new QComboBox(this)),
+      neighbourhoodLabel(new QLabel("Neighbourhood", this)), cellSizeLabel(new QLabel("Cell size:", this)),
+      cellSizeCombo(new QComboBox(this)), randomCountSpin(new QSpinBox(this)), regularStrideSpin(new QSpinBox(this))
 {
     setFixedSize(Config::windowWidth, Config::windowHeight);
     setupUI();
@@ -20,7 +21,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 void MainWindow::setupUI()
 {
-    this->gridWidget->setFixedSize(Config::gridWidth, Config::gridHeight);
+    this->gridWidget->setFixedSize(Config::gridPixelWidth, Config::gridPixelHeight);
     this->gridWidget->setSimulation(sim);
 
     this->gridToggle->setChecked(true);
@@ -33,10 +34,22 @@ void MainWindow::setupUI()
     this->layerSlider->setMaximum(Config::gridDepth - 1);
     this->layerSlider->setValue(0);
 
-    neighbourhood->addItem("Von Neumann");
-    neighbourhood->addItem("Moore");
-    neighbourhood->addItem("Hexagonal Random");
-    neighbourhood->setCurrentIndex(0);
+    cellSizeCombo->addItem("1", QVariant(1));
+    cellSizeCombo->addItem("2", QVariant(2));
+    cellSizeCombo->addItem("5", QVariant(5));
+    cellSizeCombo->addItem("10", QVariant(10));
+    cellSizeCombo->setCurrentIndex(3);
+
+    randomCountSpin->setRange(0, 1000000); // akceptujemy dowolną liczbę ziaren do miliona
+    randomCountSpin->setValue(Config::randomGrainNumber);
+
+    regularStrideSpin->setRange(1, std::max({Config::gridCols, Config::gridRows, Config::gridDepth}));
+    regularStrideSpin->setValue(Config::regularGrainStride);
+
+    neighbourhoodCombo->addItem("Von Neumann");
+    neighbourhoodCombo->addItem("Moore");
+    neighbourhoodCombo->addItem("Hexagonal Random");
+    neighbourhoodCombo->setCurrentIndex(0);
 }
 
 void MainWindow::setupLayout()
@@ -80,9 +93,14 @@ void MainWindow::setupLayout()
     grnPlcRow->addStretch();
     rightLayout->addLayout(grnPlcRow);
 
+    QHBoxLayout *spinRow = new QHBoxLayout();
+    spinRow->addWidget(randomCountSpin);
+    spinRow->addWidget(regularStrideSpin);
+    rightLayout->addLayout(spinRow);
+
     // Neighbourhood combobox
     rightLayout->addWidget(neighbourhoodLabel);
-    rightLayout->addWidget(neighbourhood);
+    rightLayout->addWidget(neighbourhoodCombo);
 
     // Checkboxes
     QHBoxLayout *chckbxRow = new QHBoxLayout();
@@ -91,6 +109,9 @@ void MainWindow::setupLayout()
     chckbxRow->addWidget(ereaseToggle);
     chckbxRow->addStretch(); // Push checkboxes up
     rightLayout->addLayout(chckbxRow);
+
+    rightLayout->addWidget(cellSizeLabel);
+    rightLayout->addWidget(cellSizeCombo);
 
     // Depth slider
     rightLayout->addWidget(layerLabel, 0, Qt::AlignCenter);
@@ -115,9 +136,15 @@ void MainWindow::setupConnections()
     connect(randomGrainsButton, &QPushButton::clicked, this,
             &MainWindow::onRandomGrainsClicked); // Place grains randolmy
     connect(regularGrainsButton, &QPushButton::clicked, this,
-            &MainWindow::onRegularGrainsClicked);                                     // Place grains regularly
-    connect(neighbourhood, QOverload<int>::of(&QComboBox::currentIndexChanged), this, // Neighbourhood combobox
+            &MainWindow::onRegularGrainsClicked);                                          // Place grains regularly
+    connect(neighbourhoodCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, // Neighbourhood combobox
             &MainWindow::onNeighbourhoodChanged);
+    connect(cellSizeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            &MainWindow::onCellSizeChanged); // Cell size combo box
+    connect(randomCountSpin, QOverload<int>::of(&QSpinBox::valueChanged), this,
+            &MainWindow::onRandomCountChanged); // Random spin
+    connect(regularStrideSpin, QOverload<int>::of(&QSpinBox::valueChanged), this,
+            &MainWindow::onRegularStrideChanged); // Regular spin
 }
 
 void MainWindow::onStartClicked()
@@ -194,6 +221,32 @@ void MainWindow::onNeighbourhoodChanged(int index)
         nt = NeighbourhoodType::HexagonalRandom;
     }
     sim->setNeighbourhoodType(nt);
+}
+
+void MainWindow::onCellSizeChanged(int index)
+{
+    int newSize = cellSizeCombo->currentData().toInt();
+    Config::cellSize = newSize;
+
+    Config::gridCols = std::floor(Config::gridPixelWidth / double(Config::cellSize));
+    Config::gridRows = std::floor(Config::gridPixelHeight / double(Config::cellSize));
+
+    delete sim;
+    sim = new Simulation(Config::gridCols, Config::gridRows, Config::gridDepth);
+    gridWidget->setSimulation(sim);
+    gridWidget->setFixedSize(Config::gridPixelWidth, Config::gridPixelHeight);
+    gridWidget->update();
+    iterationLabel->setText("Iteration: 0");
+}
+
+void MainWindow::onRandomCountChanged(int newVal)
+{
+    Config::randomGrainNumber = newVal;
+}
+
+void MainWindow::onRegularStrideChanged(int newVal)
+{
+    Config::regularGrainStride = newVal;
 }
 
 MainWindow::~MainWindow()
