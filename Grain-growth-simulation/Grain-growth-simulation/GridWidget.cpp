@@ -47,9 +47,9 @@ void GridWidget::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
 
-    // Drawing simulation
     if (sim)
     {
+        // Drawing simulation
         const Grid &grid = sim->getGrid();
         for (int x = 0; x < grid.getCols(); ++x)
         {
@@ -59,27 +59,27 @@ void GridWidget::paintEvent(QPaintEvent *)
                                  grid.at(x, y, currentZ).colorForState());
             }
         }
-    }
 
-    // Drawing grid
-    if (showGrid)
-    {
-        painter.setPen(Qt::black);
-        int maxX = width() - 1;
-        int maxY = height() - 1;
-
-        for (int i = 0; i <= Config::gridCols; ++i)
+        // Drawing grid
+        if (showGrid)
         {
-            int xx = qMin(i * Config::cellSize, maxX);
-            painter.drawLine(xx, 0, xx, maxY);
-        }
-        for (int j = 0; j <= Config::gridRows; ++j)
-        {
-            int yy = qMin(j * Config::cellSize, maxY);
-            painter.drawLine(0, yy, maxX, yy);
-        }
+            painter.setPen(Qt::black);
+            int maxX = width() - 1;
+            int maxY = height() - 1;
 
-        painter.drawRect(0, 0, maxX, maxY);
+            for (int i = 0; i <= grid.getCols(); ++i)
+            {
+                int xx = qMin(i * Config::cellSize, maxX);
+                painter.drawLine(xx, 0, xx, maxY);
+            }
+            for (int j = 0; j <= grid.getRows(); ++j)
+            {
+                int yy = qMin(j * Config::cellSize, maxY);
+                painter.drawLine(0, yy, maxX, yy);
+            }
+
+            painter.drawRect(0, 0, maxX, maxY);
+        }
     }
 }
 
