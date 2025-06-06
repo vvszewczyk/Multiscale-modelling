@@ -3,12 +3,12 @@
 namespace Config
 {
 // Grid
-const int cellSize = 5; // 1, 2, 5, 10
-const int gridCols = std::ceil(860 / double(Config::cellSize));
-const int gridRows = std::ceil(790 / double(Config::cellSize));
-const int gridDepth = 50;
-const int gridWidth = gridCols * cellSize;
-const int gridHeight = gridRows * cellSize;
+extern int cellSize;
+const int gridPixelWidth = 860;
+const int gridPixelHeight = 790;
+extern int gridCols;
+extern int gridRows;
+extern int gridDepth;
 
 // Main window
 const int windowWidth = 1065;
@@ -19,8 +19,8 @@ const int buttonWidth = 50;
 const int buttonHeight = 20;
 
 // Simulation
-const int randomGrainNumber = 500;
-const int regularGrainStride = 10;
+extern int randomGrainNumber;
+extern int regularGrainStride;
 
 // Panel colors
 const char centralWidgetColor[] = "background-color: #74f740"; // lightgreen
