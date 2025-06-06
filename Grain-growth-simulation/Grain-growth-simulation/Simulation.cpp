@@ -227,9 +227,57 @@ void Simulation::step()
 
                     if (!neighbours.empty())
                     {
-                        int idx = QRandomGenerator::global()->bounded(neighbours.size());
-                        Cell *picked = neighbours[idx];
-                        nextGrid.at(x, y, z).setState(State::Occupied, picked->getGrainID(), picked->colorForState());
+                        // Neighbour frequency
+                        std::unordered_map<int, int> freq;
+                        freq.reserve(neighbours.size());
+
+                        for (Cell *nc : neighbours)
+                        {
+                            freq[nc->getGrainID()]++;
+                        }
+
+                        // Find max frequency
+                        int maxCount = 0;
+                        for (std::pair<int, int> pair : freq)
+                        {
+                            if (pair.second > maxCount)
+                            {
+                                maxCount = pair.second;
+                            }
+                        }
+
+                        // Find all neighbours with the same frequency as max
+                        std::vector<int> candidates;
+                        for (std::pair<int, int> pair : freq)
+                        {
+                            if (pair.second == maxCount)
+                            {
+                                candidates.push_back(pair.first);
+                            }
+                        }
+
+                        // Draw if more candidates
+                        int chosenGrainID;
+                        if (candidates.size() == 1)
+                        {
+                            chosenGrainID = candidates[0];
+                        }
+                        else
+                        {
+                            int rnd = QRandomGenerator::global()->bounded(candidates.size());
+                            chosenGrainID = candidates[rnd];
+                        }
+
+                        QColor chosenColor = Qt::white;
+                        for (Cell *nc : neighbours)
+                        {
+                            if (nc->getGrainID() == chosenGrainID)
+                            {
+                                chosenColor = nc->colorForState();
+                            }
+                        }
+
+                        nextGrid.at(x, y, z).setState(State::Occupied, chosenGrainID, chosenColor);
                     }
                 }
             }
