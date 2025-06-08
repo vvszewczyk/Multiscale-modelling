@@ -28,6 +28,7 @@ class Simulation
     void seedRegular(int stepX, int stepY, int stepZ);
 
     void removeAt(int x, int y, int z);
+    void removeGrainByID(int grainID);
 
     const Grid &getGrid() const;
     int getIteration() const;

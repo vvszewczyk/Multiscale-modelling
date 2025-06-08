@@ -139,6 +139,28 @@ void Simulation::removeAt(int x, int y, int z)
     currentGrid.at(x, y, z).reset();
 }
 
+void Simulation::removeGrainByID(int grainID)
+{
+    int W = currentGrid.getCols();
+    int H = currentGrid.getRows();
+    int D = currentGrid.getDepth();
+
+    for (int x = 0; x < W; ++x)
+    {
+        for (int y = 0; y < H; ++y)
+        {
+            for (int z = 0; z < D; ++z)
+            {
+                Cell &c = currentGrid.at(x, y, z);
+                if (c.getState() == State::Occupied && c.getGrainID() == grainID)
+                {
+                    c.reset();
+                }
+            }
+        }
+    }
+}
+
 void Simulation::step()
 {
     nextGrid.reset();
