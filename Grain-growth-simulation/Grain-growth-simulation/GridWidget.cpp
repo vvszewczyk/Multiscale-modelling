@@ -103,6 +103,7 @@ void GridWidget::mousePressEvent(QMouseEvent *event)
     else
     {
         sim->removeAt(x, y, z);
+        emit cellRemoved(x, y, z);
     }
 
     update();

@@ -19,6 +19,9 @@ class GridWidget : public QWidget
     void setEreaseMode(bool value);
     void setLayer(int z);
 
+  signals:
+    void cellRemoved(int x, int y, int z);
+
   protected:
     void paintEvent(QPaintEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
