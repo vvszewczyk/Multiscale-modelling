@@ -2,6 +2,7 @@
 #include <GridWidget.h>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QFileDialog>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
@@ -23,6 +24,7 @@ class MainWindow : public QMainWindow
 
     QLabel *simulationLabel;
     QLabel *layerLabel;
+    QLabel *layersCountLabel;
     QLabel *iterationLabel;
     QLabel *grainsLabel;
     QLabel *neighbourhoodLabel;
@@ -32,6 +34,9 @@ class MainWindow : public QMainWindow
     QPushButton *resetButton;
     QPushButton *randomGrainsButton;
     QPushButton *regularGrainsButton;
+    QPushButton *ereaseGrainButton;
+    QPushButton *savePNGButton;
+    QPushButton *saveOvitoButton;
 
     QCheckBox *gridToggle;
     QCheckBox *ereaseToggle;
@@ -40,9 +45,11 @@ class MainWindow : public QMainWindow
 
     QComboBox *neighbourhoodCombo;
     QComboBox *cellSizeCombo;
+    QComboBox *ereaseGrainCombo;
 
     QSpinBox *randomCountSpin;
     QSpinBox *regularStrideSpin;
+    QSpinBox *layersCountSpin;
 
     void setupUI();
     void setupLayout();
@@ -63,8 +70,13 @@ class MainWindow : public QMainWindow
     void onCellSizeChanged(int index);
     void onRandomCountChanged(int newVal);
     void onRegularStrideChanged(int newVal);
+    void onLayersCountChanged(int newDepth);
 
     void onRandomGrainsClicked();
     void onRegularGrainsClicked();
     void onNeighbourhoodChanged(int index);
+    void onEreaseGrainButtonClicked();
+    void onSavePNGClicked();
+
+    void refreshEreaseCombo();
 };
