@@ -3,9 +3,9 @@
 namespace Config
 {
 // Grid
-extern int cellSize;
 const int gridPixelWidth = 860;
 const int gridPixelHeight = 790;
+extern int cellSize;
 extern int gridCols;
 extern int gridRows;
 extern int gridDepth;
