@@ -14,10 +14,13 @@ MainWindow::MainWindow(QWidget *parent)
       cellSizeCombo(new QComboBox(this)), randomCountSpin(new QSpinBox(this)), regularStrideSpin(new QSpinBox(this)),
       layersCountLabel(new QLabel("Layers: ", this)), layersCountSpin(new QSpinBox(this)),
       ereaseGrainCombo(new QComboBox(this)), ereaseGrainButton(new QPushButton("Erease grain", this)),
-      savePNGButton(new QPushButton("Save PNG", this)), saveOvitoButton(new QPushButton("Save ovito", this))
+      savePNGButton(new QPushButton("Save PNG", this)), saveOvitoButton(new QPushButton("Save ovito", this)),
+      statsWidget(new QWidget(this)), contentStack(new QStackedWidget(centralWidget())),
+      toggleViewButton(new QPushButton("Show stats", this))
 {
     setFixedSize(Config::windowWidth, Config::windowHeight);
     setupUI();
+    setupStats();
     setupLayout();
     setupConnections();
 }
@@ -57,6 +60,9 @@ void MainWindow::setupUI()
     neighbourhoodCombo->setCurrentIndex(0);
 
     ereaseGrainCombo->addItem("(none)", QVariant(0));
+
+    toggleViewButton->setCheckable(true);
+    toggleViewButton->setChecked(false);
 }
 
 void MainWindow::setupLayout()
@@ -69,9 +75,14 @@ void MainWindow::setupLayout()
     mainLayout->setContentsMargins(0, 0, 0, 0);
 
     QWidget *left = new QWidget(centralWidget);
-    // left->setStyleSheet(Config::leftBlockColor);
+    left->setStyleSheet(Config::leftBlockColor);
     QVBoxLayout *leftLayout = new QVBoxLayout(left);
-    leftLayout->addWidget(gridWidget, 0, Qt::AlignTop | Qt::AlignLeft);
+
+    contentStack->addWidget(gridWidget);
+    contentStack->addWidget(statsWidget);
+    contentStack->setCurrentIndex(0);
+
+    leftLayout->addWidget(contentStack, 1);
     leftLayout->addStretch();
     mainLayout->addWidget(left, 7);
 
@@ -135,6 +146,8 @@ void MainWindow::setupLayout()
     rightLayout->addLayout(layerRow);
     rightLayout->addStretch();
 
+    rightLayout->addWidget(toggleViewButton, 0, Qt::AlignCenter);
+
     // Save buttons
     QHBoxLayout *saveRow = new QHBoxLayout();
     saveRow->addWidget(savePNGButton);
@@ -148,13 +161,79 @@ void MainWindow::setupLayout()
     mainLayout->addWidget(right, 1);
 }
 
+void MainWindow::setupStats()
+{
+    QVBoxLayout *statsL = new QVBoxLayout(statsWidget);
+
+    QGroupBox *summaryBox = new QGroupBox("Summary", statsWidget);
+    QFormLayout *form = new QFormLayout(summaryBox);
+    totalGrainsLabel = new QLabel("0", summaryBox);
+    occupiedFractionLabel = new QLabel("0%", summaryBox);
+    avgSizeLabel = new QLabel("0", summaryBox);
+    stdDevLabel = new QLabel("0", summaryBox);
+    iterationValueLabel = new QLabel("0", summaryBox);
+    form->addRow("Number of grains:", totalGrainsLabel);
+    form->addRow("Filling [%]:", occupiedFractionLabel);
+    form->addRow("AVG size:", avgSizeLabel);
+    form->addRow("Standard Deviation:", stdDevLabel);
+    form->addRow("Iteration:", iterationValueLabel);
+    statsL->addWidget(summaryBox);
+
+    meanSizeSeries = new QLineSeries(this);
+    meanSizeChart = new QChart();
+    meanSizeChart->addSeries(meanSizeSeries);
+    meanSizeChart->legend()->hide();
+    meanSizeChart->setTitle("AVG grain size");
+
+    meanIterAxis = new QValueAxis();
+    meanIterAxis->setTitleText("Iteration");
+    meanIterAxis->setLabelFormat("%d");
+    meanSizeChart->addAxis(meanIterAxis, Qt::AlignBottom);
+    meanSizeSeries->attachAxis(meanIterAxis);
+
+    meanSizeAxis = new QValueAxis();
+    meanSizeAxis->setTitleText("AVG size");
+    meanSizeAxis->setLabelFormat("%.1f");
+    meanSizeChart->addAxis(meanSizeAxis, Qt::AlignLeft);
+    meanSizeSeries->attachAxis(meanSizeAxis);
+
+    meanSizeChartView = new QChartView(meanSizeChart, statsWidget);
+    meanSizeChartView->setRenderHint(QPainter::Antialiasing);
+    statsL->addWidget(meanSizeChartView, 1);
+
+    histSeries = new QBarSeries(this);
+    histChart = new QChart();
+    histChart->addSeries(histSeries);
+    histChart->setTitle("Grain size histogram");
+    histChart->legend()->setVisible(false);
+
+    histCategoryAxis = new QBarCategoryAxis();
+    histChart->addAxis(histCategoryAxis, Qt::AlignBottom);
+    histSeries->attachAxis(histCategoryAxis);
+
+    histValueAxis = new QValueAxis();
+    histChart->addAxis(histValueAxis, Qt::AlignLeft);
+    histSeries->attachAxis(histValueAxis);
+
+    histChartView = new QChartView(histChart, statsWidget);
+    histChartView->setRenderHint(QPainter::Antialiasing);
+    statsL->addWidget(histChartView, 1);
+
+    statsL->setStretchFactor(meanSizeChartView, 1);
+    statsL->setStretchFactor(histChartView, 1);
+}
+
 void MainWindow::setupConnections()
 {
     connect(startButton, &QPushButton::clicked, this, &MainWindow::onStartClicked);          // Start button event
     connect(resetButton, &QPushButton::clicked, this, &MainWindow::onResetClicked);          // Reset button event
     connect(gridToggle, &QCheckBox::stateChanged, gridWidget, &GridWidget::setShowGrid);     // Grid toggle
     connect(ereaseToggle, &QCheckBox::stateChanged, gridWidget, &GridWidget::setEreaseMode); // Erease mode toggle
-    connect(timer, &QTimer::timeout, this, &MainWindow::onStep);                     // Start the whole simulation
+    connect(toggleViewButton, &QPushButton::toggled, this, &MainWindow::onToggleView);
+    connect(timer, &QTimer::timeout, this, [&]() {
+        onStep();
+        updateStats();
+    }); // Start simulation and update statistics
     connect(layerSlider, &QSlider::valueChanged, this, &MainWindow::onLayerChanged); // Layer slider
     connect(randomGrainsButton, &QPushButton::clicked, this,
             &MainWindow::onRandomGrainsClicked); // Place grains randolmy
@@ -197,6 +276,7 @@ void MainWindow::onResetClicked()
 
     gridWidget->setLayer(0);
     gridWidget->update();
+    clearStats();
     updateIterationLabel();
 }
 
@@ -218,6 +298,11 @@ void MainWindow::onLayerChanged(int newZ)
     gridWidget->setLayer(newZ);
     gridWidget->update();
     refreshEreaseCombo();
+
+    if (contentStack->currentIndex() == 1)
+    {
+        updateStats();
+    }
 }
 
 void MainWindow::onRandomGrainsClicked()
@@ -370,6 +455,127 @@ void MainWindow::onSavePNGClicked()
     {
         QMessageBox::information(this, tr("Saved"), tr("Snapshot saved to:\n%1").arg(fn));
     }
+}
+
+void MainWindow::onToggleView(bool checked)
+{
+    if (checked)
+    {
+        contentStack->setCurrentIndex(1);
+        toggleViewButton->setText("Show simulation");
+        updateStats();
+    }
+    else
+    {
+        contentStack->setCurrentIndex(0);
+        toggleViewButton->setText("Show stats");
+    }
+}
+
+void MainWindow::updateStats()
+{
+    const Grid &g = sim->getGrid();
+    int W = g.getCols(), H = g.getRows(), D = g.getDepth();
+    int z = layerSlider->value(); // or 0
+
+    std::map<int, int> grainCounts;
+    int occupied = 0;
+    for (int x = 0; x < W; ++x)
+    {
+        for (int y = 0; y < H; ++y)
+        {
+            const Cell &c = g.at(x, y, z);
+            if (c.getState() == State::Occupied)
+            {
+                ++occupied;
+                ++grainCounts[c.getGrainID()];
+            }
+        }
+    }
+    int totalCells = W * H;
+    int totalGrains = grainCounts.size();
+
+    // AVG size and stddev
+    std::vector<double> sizes;
+    sizes.reserve(totalGrains);
+    for (auto &p : grainCounts)
+    {
+        sizes.push_back(p.second);
+    }
+
+    double sum = std::accumulate(sizes.begin(), sizes.end(), 0.0);
+    double mean = sizes.empty() ? 0.0 : sum / sizes.size();
+    double var = 0;
+    for (double s : sizes)
+    {
+        var += (s - mean) * (s - mean);
+    }
+    double stddev = sizes.empty() ? 0.0 : std::sqrt(var / sizes.size());
+
+    // Set texts
+    totalGrainsLabel->setText(QString::number(totalGrains));
+    occupiedFractionLabel->setText(QString::number(100.0 * occupied / totalCells, 'f', 1) + "%");
+    avgSizeLabel->setText(QString::number(mean, 'f', 2));
+    stdDevLabel->setText(QString::number(stddev, 'f', 2));
+    iterationValueLabel->setText(QString::number(sim->getIteration()));
+
+    // Add point to AVG size plot
+    int iter = sim->getIteration();
+    meanSizeSeries->append(iter, mean);
+    meanIterAxis->setRange(0, std::max(iter, 10));
+    meanSizeAxis->setRange(0, std::max(5.0, mean * 1.2));
+
+    const int binCount = 10;
+    int maxSize = sizes.empty() ? 0 : int(*std::max_element(sizes.begin(), sizes.end()));
+    int bins = std::max(1, std::min(binCount, maxSize));
+    std::vector<int> binCounts(bins, 0);
+    double binWidth = double(maxSize) / bins;
+
+    for (auto &p : grainCounts)
+    {
+        int size = p.second;
+        int idx = std::min(bins - 1, int((size - 1) / binWidth));
+        binCounts[idx] += p.second;
+    }
+
+    QStringList categories;
+    for (int i = 0; i < bins; ++i)
+    {
+        int lo = int(std::round(i * binWidth)) + 1;
+        int hi = int(std::round((i + 1) * binWidth));
+        categories << QString("%1–%2").arg(lo).arg(hi);
+    }
+
+    histSeries->clear();
+    QBarSet *set = new QBarSet("Count");
+    for (int cnt : binCounts)
+    {
+        *set << cnt;
+    }
+    histSeries->append(set);
+
+    histCategoryAxis->clear();
+    histCategoryAxis->append(categories);
+
+    qreal maxVal = *std::max_element(binCounts.begin(), binCounts.end());
+    histValueAxis->setRange(0, maxVal + 1);
+}
+
+void MainWindow::clearStats()
+{
+    meanSizeSeries->clear();
+    histSeries->clear();
+    histCategoryAxis->clear();
+
+    meanIterAxis->setRange(0, 10);
+    meanSizeAxis->setRange(0, 5);
+    histValueAxis->setRange(0, 1);
+
+    totalGrainsLabel->setText("0");
+    occupiedFractionLabel->setText("0%");
+    avgSizeLabel->setText("0");
+    stdDevLabel->setText("0");
+    iterationValueLabel->setText("0");
 }
 
 MainWindow::~MainWindow()

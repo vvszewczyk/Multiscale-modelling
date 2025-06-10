@@ -13,12 +13,16 @@
 #include <QSpinBox>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QtCharts>
 #include <QtWidgets/QMainWindow>
 
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
+    QStackedWidget *contentStack;
     GridWidget *gridWidget;
+    QWidget *statsWidget;
+
     Simulation *sim;
     QTimer *timer;
 
@@ -30,6 +34,12 @@ class MainWindow : public QMainWindow
     QLabel *neighbourhoodLabel;
     QLabel *cellSizeLabel;
 
+    QLabel *totalGrainsLabel;
+    QLabel *occupiedFractionLabel;
+    QLabel *avgSizeLabel;
+    QLabel *stdDevLabel;
+    QLabel *iterationValueLabel;
+
     QPushButton *startButton;
     QPushButton *resetButton;
     QPushButton *randomGrainsButton;
@@ -37,6 +47,7 @@ class MainWindow : public QMainWindow
     QPushButton *ereaseGrainButton;
     QPushButton *savePNGButton;
     QPushButton *saveOvitoButton;
+    QPushButton *toggleViewButton;
 
     QCheckBox *gridToggle;
     QCheckBox *ereaseToggle;
@@ -51,10 +62,26 @@ class MainWindow : public QMainWindow
     QSpinBox *regularStrideSpin;
     QSpinBox *layersCountSpin;
 
+    // Stats
+    QLineSeries *meanSizeSeries;
+    QChart *meanSizeChart;
+    QChartView *meanSizeChartView;
+    QValueAxis *meanIterAxis;
+    QValueAxis *meanSizeAxis;
+
+    QBarSeries *histSeries;
+    QChart *histChart;
+    QChartView *histChartView;
+    QBarCategoryAxis *histCategoryAxis;
+    QValueAxis *histValueAxis;
+
     void setupUI();
     void setupLayout();
     void setupConnections();
     void updateIterationLabel();
+    void setupStats();
+    void updateStats();
+    void clearStats();
 
   public:
     MainWindow(QWidget *parent = nullptr);
@@ -77,6 +104,6 @@ class MainWindow : public QMainWindow
     void onNeighbourhoodChanged(int index);
     void onEreaseGrainButtonClicked();
     void onSavePNGClicked();
-
+    void onToggleView(bool checked);
     void refreshEreaseCombo();
 };
