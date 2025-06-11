@@ -1,5 +1,8 @@
 #pragma once
 #include "Grid.h"
+#include <QRandomGenerator>
+#include <QVector3D>
+#include <vector>
 
 enum class NeighbourhoodType
 {
@@ -8,12 +11,21 @@ enum class NeighbourhoodType
     HexagonalRandom
 };
 
+struct NeighbourhoodDefinition
+{
+    const QVector3D *offsets;
+    int count;
+};
+
 class Simulation
 {
     Grid currentGrid;
     Grid nextGrid;
     int nextGrainID;
     int iteration;
+    double jgb;
+    double kt;
+    double mcSteps;
     NeighbourhoodType neighbourhoodType;
 
     QColor randomColor() const;
@@ -22,6 +34,9 @@ class Simulation
     Simulation(int cols, int rows, int depth);
     void step();
     void reset();
+
+    void mcStep();
+    double localEnergy(int x, int y, int z) const;
 
     void seedManual(int x, int y, int z);
     void seedRandom(int N);
@@ -35,4 +50,8 @@ class Simulation
 
     void setNeighbourhoodType(NeighbourhoodType n);
     NeighbourhoodType getNeighbourhoodType() const;
+
+  public slots:
+    void setJgb(double value);
+    void setKt(double value);
 };
