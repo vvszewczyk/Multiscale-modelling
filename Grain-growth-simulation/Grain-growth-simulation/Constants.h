@@ -29,4 +29,22 @@ const char rightBlockColor[] = "background-color: #e1eaff;";   // lightblue
 
 // Margin/padding
 const int margin = 5;
+
+// Neighbourhood offsets
+static const QVector3D VN[6] = {QVector3D(1, 0, 0),  QVector3D(-1, 0, 0), QVector3D(0, 1, 0),
+                                QVector3D(0, -1, 0), QVector3D(0, 0, 1),  QVector3D(0, 0, -1)};
+
+static const QVector3D MOORE[26] = {
+    QVector3D(-1, -1, -1), QVector3D(-1, -1, 0), QVector3D(-1, -1, 1), QVector3D(-1, 0, -1), QVector3D(-1, 0, 0),
+    QVector3D(-1, 0, 1),   QVector3D(-1, 1, -1), QVector3D(-1, 1, 0),  QVector3D(-1, 1, 1),  QVector3D(0, -1, -1),
+    QVector3D(0, -1, 0),   QVector3D(0, -1, 1),  QVector3D(0, 0, -1),  QVector3D(0, 0, 1),   QVector3D(0, 1, -1),
+    QVector3D(0, 1, 0),    QVector3D(0, 1, 1),   QVector3D(1, -1, -1), QVector3D(1, -1, 0),  QVector3D(1, -1, 1),
+    QVector3D(1, 0, -1),   QVector3D(1, 0, 0),   QVector3D(1, 0, 1),   QVector3D(1, 1, -1),  QVector3D(1, 1, 0),
+    QVector3D(1, 1, 1)};
+
+static const QVector3D HEXAGON_A[6] = {QVector3D(-1, -1, 0), QVector3D(0, -1, 0), QVector3D(1, 0, 0),
+                                       QVector3D(0, 1, 0),   QVector3D(-1, 0, 0), QVector3D(1, 1, 0)};
+
+static const QVector3D HEXAGON_B[6] = {QVector3D(0, -1, 0), QVector3D(1, -1, 0), QVector3D(1, 0, 0),
+                                       QVector3D(0, 1, 0),  QVector3D(-1, 0, 0), QVector3D(-1, 1, 0)};
 } // namespace Config
