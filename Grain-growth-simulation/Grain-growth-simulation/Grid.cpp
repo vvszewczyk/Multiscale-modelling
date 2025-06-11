@@ -54,3 +54,17 @@ void Grid::reset()
         c.reset();
     }
 }
+
+int Grid::countEmpty() const
+{
+    int counter = 0;
+    for (const Cell &c : cells)
+    {
+        if (c.getState() == State::Empty)
+        {
+            ++counter;
+        }
+    }
+
+    return counter;
+}

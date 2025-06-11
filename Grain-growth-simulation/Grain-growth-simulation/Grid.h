@@ -16,5 +16,6 @@ class Grid
     int getCols() const;
     int getRows() const;
     int getDepth() const;
+    int countEmpty() const;
     void reset();
 };
