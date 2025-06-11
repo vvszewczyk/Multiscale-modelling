@@ -15,6 +15,7 @@
 #include <QVBoxLayout>
 #include <QtCharts>
 #include <QtWidgets/QMainWindow>
+#include <fstream>
 
 class MainWindow : public QMainWindow
 {
@@ -33,6 +34,10 @@ class MainWindow : public QMainWindow
     QLabel *grainsLabel;
     QLabel *neighbourhoodLabel;
     QLabel *cellSizeLabel;
+    QLabel *monteCarloLabel;
+    QLabel *mcRemainingLabel;
+    QLabel *jgbLabel;
+    QLabel *ktLabel;
 
     QLabel *totalGrainsLabel;
     QLabel *occupiedFractionLabel;
@@ -61,6 +66,9 @@ class MainWindow : public QMainWindow
     QSpinBox *randomCountSpin;
     QSpinBox *regularStrideSpin;
     QSpinBox *layersCountSpin;
+    QSpinBox *mcStepsSpin;
+    QDoubleSpinBox *jgbSpin;
+    QDoubleSpinBox *ktSpin;
 
     // Stats
     QLineSeries *meanSizeSeries;
@@ -75,12 +83,15 @@ class MainWindow : public QMainWindow
     QBarCategoryAxis *histCategoryAxis;
     QValueAxis *histValueAxis;
 
+    bool caDone;
+    int mcTotal;
+    int mcDone;
     void setupUI();
     void setupLayout();
     void setupConnections();
-    void updateIterationLabel();
+    void updateIterationLabel(int globalStep);
     void setupStats();
-    void updateStats();
+    void updateStats(int globalStep);
     void clearStats();
 
   public:
@@ -104,6 +115,7 @@ class MainWindow : public QMainWindow
     void onNeighbourhoodChanged(int index);
     void onEreaseGrainButtonClicked();
     void onSavePNGClicked();
+    void onSaveOvitoClicked();
     void onToggleView(bool checked);
     void refreshEreaseCombo();
 };

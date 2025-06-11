@@ -4,7 +4,7 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), gridWidget(new GridWidget(this)),
       sim(new Simulation(Config::gridCols, Config::gridRows, Config::gridDepth)), timer(new QTimer(this)),
-      simulationLabel(new QLabel("Simulation", this)), startButton(new QPushButton("Start", this)),
+      simulationLabel(new QLabel("Simulation settings", this)), startButton(new QPushButton("Start", this)),
       resetButton(new QPushButton("Reset", this)), gridToggle(new QCheckBox("Show grid", this)),
       ereaseToggle(new QCheckBox("Erease mode", this)), iterationLabel(new QLabel("Iteration: 0", this)),
       layerSlider(new QSlider(Qt::Horizontal, this)), layerLabel(new QLabel("Layer: 0", this)),
@@ -16,7 +16,11 @@ MainWindow::MainWindow(QWidget *parent)
       ereaseGrainCombo(new QComboBox(this)), ereaseGrainButton(new QPushButton("Erease grain", this)),
       savePNGButton(new QPushButton("Save PNG", this)), saveOvitoButton(new QPushButton("Save ovito", this)),
       statsWidget(new QWidget(this)), contentStack(new QStackedWidget(centralWidget())),
-      toggleViewButton(new QPushButton("Show stats", this))
+      toggleViewButton(new QPushButton("Show stats", this)), caDone(false),
+      monteCarloLabel(new QLabel("Monte Carlo settings", this)), mcTotal(0), mcDone(0),
+      mcRemainingLabel(new QLabel("MC left: 0", this)), mcStepsSpin(new QSpinBox(this)),
+      jgbLabel(new QLabel("Jgb:", this)), jgbSpin(new QDoubleSpinBox(this)), ktLabel(new QLabel("kt:", this)),
+      ktSpin(new QDoubleSpinBox(this))
 {
     setFixedSize(Config::windowWidth, Config::windowHeight);
     setupUI();
@@ -33,9 +37,6 @@ void MainWindow::setupUI()
     this->gridToggle->setChecked(true);
     this->ereaseToggle->setChecked(false);
 
-    // this->sim->seedRandom(Config::randomGrainNumber);
-    // this->sim->seedRegular(Config::regularGrainStride, Config::regularGrainStride, Config::regularGrainStride);
-
     this->layerSlider->setMinimum(0);
     this->layerSlider->setMaximum(Config::gridDepth - 1);
     this->layerSlider->setValue(0);
@@ -48,7 +49,7 @@ void MainWindow::setupUI()
     cellSizeCombo->addItem("10", QVariant(10));
     cellSizeCombo->setCurrentIndex(3);
 
-    randomCountSpin->setRange(0, 1000000); // akceptujemy dowolną liczbę ziaren do miliona
+    randomCountSpin->setRange(0, 1000000);
     randomCountSpin->setValue(Config::randomGrainNumber);
 
     regularStrideSpin->setRange(1, std::max({Config::gridCols, Config::gridRows, Config::gridDepth}));
@@ -63,6 +64,17 @@ void MainWindow::setupUI()
 
     toggleViewButton->setCheckable(true);
     toggleViewButton->setChecked(false);
+
+    mcStepsSpin->setRange(0, 100000);
+    mcStepsSpin->setValue(10);
+
+    jgbSpin->setRange(0.0, 5.0);
+    jgbSpin->setSingleStep(0.1);
+    jgbSpin->setValue(1.0);
+
+    ktSpin->setRange(0.1, 6.0);
+    ktSpin->setSingleStep(0.1);
+    ktSpin->setValue(0.1);
 }
 
 void MainWindow::setupLayout()
@@ -128,11 +140,13 @@ void MainWindow::setupLayout()
     chckbxRow->addStretch(); // Push checkboxes up
     rightLayout->addLayout(chckbxRow);
 
+    // Erease combo
     QHBoxLayout *ereaseRow = new QHBoxLayout();
     ereaseRow->addWidget(ereaseGrainCombo);
     ereaseRow->addWidget(ereaseGrainButton);
     rightLayout->addLayout(ereaseRow);
 
+    // Cell size
     rightLayout->addWidget(cellSizeLabel);
     rightLayout->addWidget(cellSizeCombo);
 
@@ -140,12 +154,33 @@ void MainWindow::setupLayout()
     rightLayout->addWidget(layerLabel, 0, Qt::AlignCenter);
     rightLayout->addWidget(layerSlider);
 
+    // Layer number
     QHBoxLayout *layerRow = new QHBoxLayout();
     layerRow->addWidget(layersCountLabel);
     layerRow->addWidget(layersCountSpin);
     rightLayout->addLayout(layerRow);
+
+    // Monte Carlo steps
+    rightLayout->addWidget(monteCarloLabel);
+    QHBoxLayout *mcRow = new QHBoxLayout();
+    mcRow->addWidget(mcStepsSpin);
+    mcRow->addWidget(mcRemainingLabel);
+    rightLayout->addLayout(mcRow);
+
+    // Monte carlo constants
+    QHBoxLayout *jgbRow = new QHBoxLayout();
+    jgbRow->addWidget(jgbLabel);
+    jgbRow->addWidget(jgbSpin);
+    rightLayout->addLayout(jgbRow);
+
+    QHBoxLayout *ktRow = new QHBoxLayout();
+    ktRow->addWidget(ktLabel);
+    ktRow->addWidget(ktSpin);
+    rightLayout->addLayout(ktRow);
+
     rightLayout->addStretch();
 
+    // Grid/stats button
     rightLayout->addWidget(toggleViewButton, 0, Qt::AlignCenter);
 
     // Save buttons
@@ -199,6 +234,7 @@ void MainWindow::setupStats()
 
     meanSizeChartView = new QChartView(meanSizeChart, statsWidget);
     meanSizeChartView->setRenderHint(QPainter::Antialiasing);
+
     statsL->addWidget(meanSizeChartView, 1);
 
     histSeries = new QBarSeries(this);
@@ -232,27 +268,42 @@ void MainWindow::setupConnections()
     connect(toggleViewButton, &QPushButton::toggled, this, &MainWindow::onToggleView);
     connect(timer, &QTimer::timeout, this, [&]() {
         onStep();
-        updateStats();
+        int globalStep = sim->getIteration() + mcDone;
+        updateStats(globalStep);
     }); // Start simulation and update statistics
     connect(layerSlider, &QSlider::valueChanged, this, &MainWindow::onLayerChanged); // Layer slider
     connect(randomGrainsButton, &QPushButton::clicked, this,
             &MainWindow::onRandomGrainsClicked); // Place grains randolmy
     connect(regularGrainsButton, &QPushButton::clicked, this,
-            &MainWindow::onRegularGrainsClicked);                                          // Place grains regularly
-    connect(neighbourhoodCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, // Neighbourhood combobox
-            &MainWindow::onNeighbourhoodChanged);
+            &MainWindow::onRegularGrainsClicked); // Place grains regularly
+    connect(neighbourhoodCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            &MainWindow::onNeighbourhoodChanged); // Neighbourhood combobox
     connect(cellSizeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &MainWindow::onCellSizeChanged); // Cell size combo box
     connect(randomCountSpin, QOverload<int>::of(&QSpinBox::valueChanged), this,
             &MainWindow::onRandomCountChanged); // Random spin
     connect(regularStrideSpin, QOverload<int>::of(&QSpinBox::valueChanged), this,
             &MainWindow::onRegularStrideChanged); // Regular spin
-    connect(layersCountSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &MainWindow::onLayersCountChanged);
-    connect(ereaseGrainButton, &QPushButton::clicked, this, &MainWindow::onEreaseGrainButtonClicked);
-    connect(timer, &QTimer::timeout, this, &MainWindow::refreshEreaseCombo);
-    connect(gridWidget, &GridWidget::cellRemoved, this, &MainWindow::refreshEreaseCombo);
-    connect(savePNGButton, &QPushButton::clicked, this, &MainWindow::onSavePNGClicked);
+    connect(layersCountSpin, QOverload<int>::of(&QSpinBox::valueChanged), this,
+            &MainWindow::onLayersCountChanged); // Layers spin
+    connect(ereaseGrainButton, &QPushButton::clicked, this,
+            &MainWindow::onEreaseGrainButtonClicked);                        // Erease grain (button for combo)
+    connect(timer, &QTimer::timeout, this, &MainWindow::refreshEreaseCombo); // Refreshing erease combobox
+    connect(gridWidget, &GridWidget::cellRemoved, this, &MainWindow::refreshEreaseCombo); // Removing grains with combo
+    connect(savePNGButton, &QPushButton::clicked, this, &MainWindow::onSavePNGClicked);   // Save as PNG
+    connect(saveOvitoButton, &QPushButton::clicked, this, &MainWindow::onSaveOvitoClicked); // Save as Ovito
+    connect(mcStepsSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, [&](int v) {
+        mcTotal = v;
+        mcDone = 0;
+        mcRemainingLabel->setText(QString("MC left: %1").arg(mcTotal));
+    }); // Monte carlo steps
+    connect(jgbSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
+            [&](double v) { sim->setJgb(v); }); // Jgb spin
+    connect(ktSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
+            [&](double v) { sim->setKt(v); }); // kt spin
 }
+
+// Widget methods
 
 void MainWindow::onStartClicked()
 {
@@ -263,6 +314,7 @@ void MainWindow::onStartClicked()
     }
     else
     {
+        mcRemainingLabel->setText(QString("MC left: %1").arg(mcTotal));
         timer->start(100);
         startButton->setText("Pause");
     }
@@ -277,19 +329,50 @@ void MainWindow::onResetClicked()
     gridWidget->setLayer(0);
     gridWidget->update();
     clearStats();
-    updateIterationLabel();
+    updateIterationLabel(0);
+    caDone = false;
+    mcTotal = 0;
 }
 
 void MainWindow::onStep()
 {
-    sim->step();
+    if (!caDone)
+    {
+        // CA
+        sim->step();
+        if (sim->getGrid().countEmpty() == 0)
+        {
+            caDone = true;
+        }
+    }
+    else if (mcDone < mcTotal)
+    {
+        // MC
+        sim->mcStep();
+        ++mcDone;
+        mcRemainingLabel->setText(QString("MC left: %1").arg(mcTotal - mcDone));
+    }
+    else
+    {
+        timer->stop();
+        startButton->setText("Start");
+    }
+
     gridWidget->update();
-    updateIterationLabel();
+
+    int globalStep = sim->getIteration() + mcDone;
+    updateIterationLabel(globalStep);
+
+    if (contentStack->currentIndex() == 1)
+    {
+        updateStats(globalStep);
+    }
 }
 
-void MainWindow::updateIterationLabel()
+void MainWindow::updateIterationLabel(int globalStep)
 {
-    iterationLabel->setText(QString("Iteration: %0").arg(sim->getIteration()));
+    iterationLabel->setText(QString("Iteration: %1").arg(globalStep));
+    meanIterAxis->setRange(0, std::max(globalStep, 10));
 }
 
 void MainWindow::onLayerChanged(int newZ)
@@ -298,10 +381,11 @@ void MainWindow::onLayerChanged(int newZ)
     gridWidget->setLayer(newZ);
     gridWidget->update();
     refreshEreaseCombo();
+    int globalStep = sim->getIteration() + mcDone;
 
     if (contentStack->currentIndex() == 1)
     {
-        updateStats();
+        updateStats(globalStep);
     }
 }
 
@@ -457,13 +541,68 @@ void MainWindow::onSavePNGClicked()
     }
 }
 
+void MainWindow::onSaveOvitoClicked()
+{
+    QString fn =
+        QFileDialog::getSaveFileName(this, tr("Save for Ovito..."), "structure.txt", tr("Text files (*.txt *.xyz)"));
+    if (fn.isEmpty())
+        return;
+
+    const Grid &g = sim->getGrid();
+    int W = g.getCols(), H = g.getRows(), D = g.getDepth();
+
+    struct Item
+    {
+        int id;
+        int x, y, z;
+
+        Item(int id, int x, int y, int z) : id(id), x(x), y(y), z(z) {};
+    };
+    std::vector<Item> items;
+    items.reserve(W * H * D);
+
+    for (int z = 0; z < D; ++z)
+    {
+        for (int y = 0; y < H; ++y)
+        {
+            for (int x = 0; x < W; ++x)
+            {
+                const Cell &c = g.at(x, y, z);
+                int id = c.getState() == State::Occupied ? c.getGrainID() : 0;
+                if (id == 0)
+                    continue;
+                items.push_back({id, x * Config::cellSize, y * Config::cellSize, z * Config::cellSize});
+            }
+        }
+    }
+
+    std::ofstream out(fn.toStdString());
+    if (!out)
+    {
+        QMessageBox::warning(this, "Error", "Cannot open file for writing");
+        return;
+    }
+
+    out << items.size() << "\n";
+    out << "# CA_iter=" << sim->getIteration() << "  MC_done=" << mcDone << "/" << mcTotal << "\n";
+
+    for (auto &it : items)
+    {
+        out << it.id << " " << it.x << " " << it.y << " " << it.z << "\n";
+    }
+    out.close();
+
+    QMessageBox::information(this, "Saved", QString("Ovito file written to:\n%1").arg(fn));
+}
+
 void MainWindow::onToggleView(bool checked)
 {
+    int globalStep = sim->getIteration() + mcDone;
     if (checked)
     {
         contentStack->setCurrentIndex(1);
         toggleViewButton->setText("Show simulation");
-        updateStats();
+        updateStats(globalStep);
     }
     else
     {
@@ -472,7 +611,7 @@ void MainWindow::onToggleView(bool checked)
     }
 }
 
-void MainWindow::updateStats()
+void MainWindow::updateStats(int globalStep)
 {
     const Grid &g = sim->getGrid();
     int W = g.getCols(), H = g.getRows(), D = g.getDepth();
@@ -517,12 +656,11 @@ void MainWindow::updateStats()
     occupiedFractionLabel->setText(QString::number(100.0 * occupied / totalCells, 'f', 1) + "%");
     avgSizeLabel->setText(QString::number(mean, 'f', 2));
     stdDevLabel->setText(QString::number(stddev, 'f', 2));
-    iterationValueLabel->setText(QString::number(sim->getIteration()));
+    iterationValueLabel->setText(QString::number(globalStep));
 
     // Add point to AVG size plot
-    int iter = sim->getIteration();
-    meanSizeSeries->append(iter, mean);
-    meanIterAxis->setRange(0, std::max(iter, 10));
+    meanSizeSeries->append(globalStep, mean);
+    meanIterAxis->setRange(0, std::max(globalStep, 10));
     meanSizeAxis->setRange(0, std::max(5.0, mean * 1.2));
 
     const int binCount = 10;
@@ -556,6 +694,9 @@ void MainWindow::updateStats()
 
     histCategoryAxis->clear();
     histCategoryAxis->append(categories);
+
+    histCategoryAxis->setTitleText("Grain size");
+    histValueAxis->setTitleText("Count");
 
     qreal maxVal = *std::max_element(binCounts.begin(), binCounts.end());
     histValueAxis->setRange(0, maxVal + 1);
