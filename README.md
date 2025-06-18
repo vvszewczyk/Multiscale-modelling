@@ -70,6 +70,6 @@
 
 Example 3D microstructure in OVITO
 ![OVITO](media/ovito.png)
-## 🤝 Contributing
+## Contributing
 
 Contributions welcome! Feel free to open issues or PRs.
