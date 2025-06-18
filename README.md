@@ -57,11 +57,11 @@
 ## Example Microstructures
 
 1. Random seeds, combination of all neighborhoods, 10 MC steps.
-   ![Microstructure 1](docs/micro1.png)
+   ![Microstructure 1](media/micro1.png)
 2. Regular seeds, Hexagonal random neighborhood, 10 MC steps (microstructure center - 25/50 layer).
-   ![Microstructure 2](docs/micro2.png)
+   ![Microstructure 2](media/micro2.png)
 3. Random seeds, von Neumann neighborhood, 5 MC + high `kT`, smoothing effect.
-   ![Microstructure 3](docs/micro3.png)
+   ![Microstructure 3](media/micro3.png)
 
 ## Export Format (OVITO)
 
@@ -69,7 +69,7 @@
 * Load via **File → Import → Text File** in OVITO.
 
 Example 3D microstructure in OVITO
-![OVITO](docs/ovito.png)
+![OVITO](media/ovito.png)
 ## 🤝 Contributing
 
 Contributions welcome! Feel free to open issues or PRs.
