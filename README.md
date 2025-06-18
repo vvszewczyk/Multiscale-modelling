@@ -37,7 +37,7 @@
 
 ## Usage
 
-1. **Compile** the code (`Suggest VS Code`).
+1. **Compile** the code.
 2. **Seed** grains:
 
    * "Random": scatter seeds.
